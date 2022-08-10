@@ -18,11 +18,12 @@ def searchIssues(jira:JIRA):
 
 
 def downloadIssue(jira, key:str, destination:Path):
-    fields=['key','summary','description','comment','attachment']
+    fields=['key','summary','description','comment','attachment','created']
     issue = jira.issue(key, fields=fields)
     filename = issue.key+'.md'
     with open(destination.joinpath(filename), 'w',encoding='utf-8') as markdown:
         markdown.write(f"# {issue.key} {issue.fields.summary}\n")
+        markdown.write(f"{issue.fields.created[:10]}\n")
         markdown.write("## Description\n")
         if issue.fields.description:
             markdown.write(image.removeSpaces(convert(issue.fields.description)))
