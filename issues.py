@@ -8,6 +8,7 @@ def searchIssues(jira:JIRA):
     fields=['key', 'summary']
     # jql = 'project=KC AND resolution = Unresolved ORDER BY priority DESC, updated DESC'
     jql = 'project=KC AND key=KC-108'
+    # jql = 'project=KC AND key=KC-111'
     issues_in_proj = jira.search_issues(jql_str=jql, maxResults=0, fields=fields )
     print(len(issues_in_proj))
     return issues_in_proj
@@ -15,30 +16,45 @@ def searchIssues(jira:JIRA):
     #     print(issue.key, issue.fields.summary)
 
 
+def searchLinkedIssues(jira:JIRA, key):
+    fields=['key', 'summary']
+    jql = f'project=KC AND issue in linkedIssues({key})'
+    searchResults = jira.search_issues(jql_str=jql, maxResults=0, fields=fields )
+    return searchResults
+
+def downloadIssue(jira, key:str, root:Path):
 
 
-
-def downloadIssue(jira, key:str, destination:Path):
-    fields=['key','summary','description','comment','attachment','created', 'status']
-    issue = jira.issue(key, fields=fields)
+    fields=['key','summary','description','comment','attachment','created', 'status', 'link']
+    issue = jira.issue(key,  fields=fields)
     filename = issue.key+'.md'
+
+
+    
+    # destination = root.joinpath(f"{issue.fields.status}", issue.key)
+    destination = root.joinpath( issue.key)
+
+    destination.mkdir(parents=True, exist_ok=True)
+
     with open(destination.joinpath(filename), 'w',encoding='utf-8') as markdownFile:
         # YAML front matter
         markdownFile.write(f"---\n")
         markdownFile.write(f"id: {issue.key}\n")  # We're calling it an "id"
+        markdownFile.write(f"summary: {issue.fields.summary}\n") #Duplicated but we need here too.
         markdownFile.write(f"status: #{issue.fields.status}\n")
         markdownFile.write(f"created: {issue.fields.created[:10]}\n")
         markdownFile.write(f"---\n")
 
-
+        # Issue starts
         markdownFile.write(f"# {issue.fields.summary}\n")
         # markdown.write("# Description\n")  # Leave out this heading, it's redundant
         if issue.fields.description:
             markdownFile.write(util.removeMarkdownURLSpaces(convert(issue.fields.description)))
         
 
+        # Attachments, if any
         if len(issue.fields.attachment):
-            markdownFile.write("\n\n## Attachments\n")
+            markdownFile.write("\n\n# Attachments\n")
 
         for attachment in issue.fields.attachment:
             attachmentFilename = attachment.filename.replace(" ","")
@@ -46,6 +62,18 @@ def downloadIssue(jira, key:str, destination:Path):
             with open(destination.joinpath(attachmentFilename), 'wb') as f:
                     f.write(attachment.get())
 
+
+        # Links, if any
+        links = searchLinkedIssues(jira, key)
+        if len(links):
+            markdownFile.write("\n\n# Links\n")
+            for link in links:
+                markdownFile.write(f"- [[{link.key}]]  {link.fields.summary}\n")
+
+
+
+
+        # if len(issue.fields.)
         markdownFile.write("\n\n# Comments\n")
         for comment in issue.fields.comment.comments:
             # print(dir(comment))

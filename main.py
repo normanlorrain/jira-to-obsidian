@@ -16,18 +16,16 @@ url = 'https://elmtreeclinic.atlassian.net/'
 basic_auth=(config['jira']['username'],config['jira']['token'])
 
 jira = JIRA( url,basic_auth=basic_auth)
-openIssues = issues.searchIssues(jira)
+searchResults = issues.searchIssues(jira)
 
 summary = open(root.joinpath("contents.md"), mode='w', encoding='utf-8')
 summary.write("# Contents\n\n")
 
 
-for issue in openIssues:
+for issue in searchResults:
     print(issue.key)
     summary.write(f"[[{issue.key}]] {issue.fields.summary}\n")
-    destination = root.joinpath("open", issue.key)
-    destination.mkdir(parents=True, exist_ok=True)
-    issues.downloadIssue(jira, issue.key, destination)
+    issues.downloadIssue(jira, issue.key, root)
     
     
 
