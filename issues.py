@@ -1,12 +1,13 @@
 from pathlib import Path
 from jira import JIRA
 from jira2markdown import convert
-import image
+import util
 
 
 def searchIssues(jira:JIRA):
     fields=['key', 'summary']
-    jql = 'project=KC AND resolution = Unresolved ORDER BY priority DESC, updated DESC'
+    # jql = 'project=KC AND resolution = Unresolved ORDER BY priority DESC, updated DESC'
+    jql = 'project=KC AND key=KC-108'
     issues_in_proj = jira.search_issues(jql_str=jql, maxResults=0, fields=fields )
     print(len(issues_in_proj))
     return issues_in_proj
@@ -18,28 +19,47 @@ def searchIssues(jira:JIRA):
 
 
 def downloadIssue(jira, key:str, destination:Path):
-    fields=['key','summary','description','comment','attachment','created']
+    fields=['key','summary','description','comment','attachment','created', 'status']
     issue = jira.issue(key, fields=fields)
     filename = issue.key+'.md'
-    with open(destination.joinpath(filename), 'w',encoding='utf-8') as markdown:
-        markdown.write(f"# {issue.key} {issue.fields.summary}\n")
-        markdown.write(f"{issue.fields.created[:10]}\n")
-        markdown.write("## Description\n")
+    with open(destination.joinpath(filename), 'w',encoding='utf-8') as markdownFile:
+        # YAML front matter
+        markdownFile.write(f"---\n")
+        markdownFile.write(f"id: {issue.key}\n")  # We're calling it an "id"
+        markdownFile.write(f"status: #{issue.fields.status}\n")
+        markdownFile.write(f"created: {issue.fields.created[:10]}\n")
+        markdownFile.write(f"---\n")
+
+
+        markdownFile.write(f"# {issue.fields.summary}\n")
+        # markdown.write("# Description\n")  # Leave out this heading, it's redundant
         if issue.fields.description:
-            markdown.write(image.removeSpaces(convert(issue.fields.description)))
-        markdown.write("\n\n## Comments\n")
-        for comment in issue.fields.comment.comments:
-            # print(dir(comment))
-            markdown.write(f"### {comment.created[:10]}\n")
-            markdown.write(image.removeSpaces(convert(comment.body)))
-            markdown.write(f"\n\n")
+            markdownFile.write(util.removeMarkdownURLSpaces(convert(issue.fields.description)))
+        
 
-
+        if len(issue.fields.attachment):
+            markdownFile.write("\n\n## Attachments\n")
 
         for attachment in issue.fields.attachment:
-            attachmentFilename = image.removeSpaces(attachment.filename)
+            attachmentFilename = attachment.filename.replace(" ","")
+            markdownFile.write(f"- [{attachmentFilename}]({attachmentFilename})\n")
             with open(destination.joinpath(attachmentFilename), 'wb') as f:
                     f.write(attachment.get())
+
+        markdownFile.write("\n\n# Comments\n")
+        for comment in issue.fields.comment.comments:
+            # print(dir(comment))
+            markdownFile.write(f"## {comment.created[:10]}\n")
+
+            # Comments are in Jira wiki format, need to be converted and the headings need demoting 
+            comment = convert(comment.body)
+            comment = util.removeMarkdownURLSpaces(comment)
+            comment = util.demoteHeadings(comment)
+            markdownFile.write(comment)
+            markdownFile.write(f"\n\n")
+
+
+
 
 
 
