@@ -18,13 +18,25 @@ basic_auth=(config['jira']['username'],config['jira']['token'])
 jira = JIRA( url,basic_auth=basic_auth)
 searchResults = issues.searchIssues(jira)
 
-summary = open(root.joinpath("contents.md"), mode='w', encoding='utf-8')
-summary.write("# Contents\n\n")
+summary = open(root.joinpath("done.md"), mode='w', encoding='utf-8')
+summary.write("""# Done 
 
+## Done
+```dataview
+LIST summary
+WHERE status = "#Open"
+
+
+```
+
+
+"""
+)
+summary.close()
 
 for issue in searchResults:
     print(issue.key)
-    summary.write(f"[[{issue.key}]] {issue.fields.summary}\n")
+    # summary.write(f"[[{issue.key}]] {issue.fields.summary}\n")
     issues.downloadIssue(jira, issue.key, root)
     
     

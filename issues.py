@@ -7,8 +7,9 @@ import util
 def searchIssues(jira:JIRA):
     fields=['key', 'summary']
     # jql = 'project=KC AND resolution = Unresolved ORDER BY priority DESC, updated DESC'
-    jql = 'project=KC AND key=KC-108'
-    # jql = 'project=KC AND key=KC-111'
+    # jql = 'project=KC AND key=KC-108'
+    # jql = 'project=KC AND key=KC-447'
+    jql = 'project=KC'
     issues_in_proj = jira.search_issues(jql_str=jql, maxResults=0, fields=fields )
     print(len(issues_in_proj))
     return issues_in_proj
@@ -25,31 +26,35 @@ def searchLinkedIssues(jira:JIRA, key):
 def downloadIssue(jira, key:str, root:Path):
 
 
-    fields=['key','summary','description','comment','attachment','created', 'status', 'link']
+    fields=['key','summary','description','comment','attachment','created', 'status']
+    # fields=['key','summary','description','comment','created', 'status']
     issue = jira.issue(key,  fields=fields)
     filename = issue.key+'.md'
 
 
-    
-    # destination = root.joinpath(f"{issue.fields.status}", issue.key)
-    destination = root.joinpath( issue.key)
+    status = util.makeStringCamel(issue.fields.status.name)
+    destination = root.joinpath(f"{status}", issue.key)
+    # destination = root.joinpath( issue.key)
 
     destination.mkdir(parents=True, exist_ok=True)
 
     with open(destination.joinpath(filename), 'w',encoding='utf-8') as markdownFile:
-        # YAML front matter
+        # # YAML front matter
         markdownFile.write(f"---\n")
         markdownFile.write(f"id: {issue.key}\n")  # We're calling it an "id"
-        markdownFile.write(f"summary: {issue.fields.summary}\n") #Duplicated but we need here too.
-        markdownFile.write(f"status: #{issue.fields.status}\n")
+        summary = str(issue.fields.summary).replace('"',"'")
+        markdownFile.write(f'summary: "{summary}"\n') #Duplicated but we need here too.
         markdownFile.write(f"created: {issue.fields.created[:10]}\n")
         markdownFile.write(f"---\n")
 
         # Issue starts
-        markdownFile.write(f"# {issue.fields.summary}\n")
-        # markdown.write("# Description\n")  # Leave out this heading, it's redundant
+        markdownFile.write(f"status:: #{status}\n") # This goes here so it is a tag, AND, a dataview field.
+        markdownFile.write(f"# {issue.fields.summary}\n") 
+        # markdownFile.write("# Description\n")  # Leave out this heading, it's redundant
         if issue.fields.description:
-            markdownFile.write(util.removeMarkdownURLSpaces(convert(issue.fields.description)))
+            # markdownFile.write(htmlStripper.handle(util.removeMarkdownURLSpaces(convert(issue.fields.description))))
+            # markdownFile.write(html2markdown.convert(util.removeMarkdownURLSpaces(convert(issue.fields.description))))
+            markdownFile.write(util.removeFontTag(util.removeMarkdownURLSpaces(convert(issue.fields.description))))
         
 
         # Attachments, if any

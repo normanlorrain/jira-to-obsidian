@@ -19,7 +19,10 @@ def removeMarkdownURLSpaces(lines:str):
     return lines
 
 
-
+def removeFontTag(lines:str):
+    fixed =  re.sub(r'<font.*?>', r'', lines, flags = re.MULTILINE)
+    fixed =  re.sub(r'</font>', r'', fixed, flags = re.MULTILINE)
+    return fixed
     
 
 
@@ -35,6 +38,9 @@ def demoteHeadings(lines:str):
     fixed =  re.sub(r'^# ',      r'### ', fixed, flags = re.MULTILINE)
     return fixed
 
+
+def makeStringCamel(line:str):
+    return line.title().replace(' ','')
 
 # def fixImages(lines:str):
 #     fixed =  re.sub(r'\!(image.*?)\|thumbnail\!', r'![image](\1)', lines)
